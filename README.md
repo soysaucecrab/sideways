@@ -59,3 +59,7 @@ open DataSharingMac.xcodeproj # 실행하면 메뉴바에 안테나 아이콘
 셀룰러 핀닝, iPhone 통계 UI, macOS `iproxy`+프록시 토글, UDID 자동 감지.
 
 미구현(spec §7, M4): UDP `associate`, iOS 백그라운드 지속 실행, 자동 재연결.
+
+## 라이선스
+
+[Apache License 2.0](LICENSE)
