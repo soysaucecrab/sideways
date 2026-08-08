@@ -1,0 +1,38 @@
+name: DataSharingMac
+options:
+  bundleIdPrefix: com.zinu.datasharing
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: ""
+
+targets:
+  DataSharingMac:
+    type: application
+    platform: macOS
+    sources:
+      - Sources
+    info:
+      path: Info.plist
+      properties:
+        CFBundleDisplayName: Data Sharing
+        LSUIElement: true   # menu-bar-only agent, no Dock icon
+        LSMinimumSystemVersion: "14.0"
+    entitlements:
+      path: DataSharingMac.entitlements
+      properties:
+        # Non-sandboxed: we spawn iproxy and call networksetup. This is a
+        # personal, self-signed tool (spec §1), not an App Store build.
+        com.apple.security.app-sandbox: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.zinu.datasharing.mac
+        GENERATE_INFOPLIST_FILE: false
+        ENABLE_HARDENED_RUNTIME: YES
