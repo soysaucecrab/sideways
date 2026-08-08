@@ -24,6 +24,10 @@ targets:
       path: Info.plist
       properties:
         CFBundleDisplayName: Data Sharing
+        # Required so canOpenURL can detect AltStore / SideStore for refresh.
+        LSApplicationQueriesSchemes:
+          - altstore
+          - sidestore
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait

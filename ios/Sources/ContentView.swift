@@ -5,6 +5,8 @@ struct ContentView: View {
     @ObservedObject var controller: ProxyController
 
     @State private var portText = "8888"
+    @State private var signing: SigningInfo? = SigningInfo.current()
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         NavigationStack {
@@ -57,6 +59,8 @@ struct ContentView: View {
                     Text("셀룰러 강제를 끄면 Wi‑Fi로도 나갈 수 있어 디버깅에 유용합니다. 실사용 시 켜 두세요.")
                 }
 
+                signingSection
+
                 if let error = stats.lastError {
                     Section {
                         Text(error)
@@ -91,5 +95,58 @@ struct ContentView: View {
             let port = UInt16(portText) ?? 8888
             controller.start(port: port)
         }
+    }
+
+    // MARK: - Signing / AltStore refresh
+
+    @ViewBuilder
+    private var signingSection: some View {
+        if let signing, signing.expirationDate != nil {
+            Section {
+                LabeledContent("만료일") {
+                    Text(expiryDateText(signing)).monospacedDigit()
+                }
+                LabeledContent("남은 기간") {
+                    Text(daysRemainingText(signing))
+                        .foregroundStyle(expiryColor(signing))
+                        .monospacedDigit()
+                }
+                Button {
+                    AltStoreLink.open { opened in
+                        if !opened {
+                            // Fall through to whatever handler the system has.
+                            openURL(AltStoreLink.candidates[0])
+                        }
+                    }
+                } label: {
+                    Label("AltStore에서 갱신", systemImage: "arrow.clockwise")
+                }
+            } header: {
+                Text("서명")
+            } footer: {
+                Text("무료 Apple ID 서명은 7일 후 만료됩니다. AltStore(AltServer)가 만료 전 자동 갱신하며, 위 버튼으로 즉시 갱신할 수 있습니다.")
+            }
+        }
+    }
+
+    private func expiryDateText(_ info: SigningInfo) -> String {
+        guard let date = info.expirationDate else { return "—" }
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd HH:mm"
+        return f.string(from: date)
+    }
+
+    private func daysRemainingText(_ info: SigningInfo) -> String {
+        guard let days = info.daysRemaining() else { return "—" }
+        if days < 0 { return "만료됨" }
+        if days == 0 { return "오늘 만료" }
+        return "\(days)일"
+    }
+
+    private func expiryColor(_ info: SigningInfo) -> Color {
+        guard let days = info.daysRemaining() else { return .primary }
+        if days <= 0 { return .red }
+        if days <= 2 { return .orange }
+        return .primary
     }
 }

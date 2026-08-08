@@ -205,6 +205,12 @@ final class SOCKS5Connection {
 
     // MARK: - Bidirectional relay
 
+    /// Directions still relaying. Both `pump` loops run on `queue`, so this is
+    /// mutated serially without a lock. The connection is torn down only once
+    /// both directions have reached EOF — preserving half-open TCP (a client
+    /// may close its write side while the server keeps sending).
+    private var openDirections = 2
+
     private func relay() {
         guard let outbound else { cancel(); return }
         pump(from: inbound, to: outbound, countOutbound: true)   // Mac → internet
@@ -221,14 +227,22 @@ final class SOCKS5Connection {
                     if sendError != nil { self.cancel(); return }
                     self.pump(from: from, to: to, countOutbound: countOutbound)
                 })
-            } else if isComplete || error != nil {
-                // Half-close the far side, then let state handlers finish teardown.
+            } else if error != nil {
+                self.cancel()
+            } else if isComplete {
+                // This direction hit EOF: forward the FIN (half-close the peer)
+                // and retire the direction. Tear down once both are done.
                 to.send(content: nil, isComplete: true, completion: .contentProcessed { _ in })
-                if error != nil { self.cancel() }
+                self.directionFinished()
             } else {
                 self.pump(from: from, to: to, countOutbound: countOutbound)
             }
         }
+    }
+
+    private func directionFinished() {
+        openDirections -= 1
+        if openDirections <= 0 { cancel() }
     }
 
     // MARK: - I/O helpers
