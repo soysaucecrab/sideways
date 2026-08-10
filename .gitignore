@@ -12,3 +12,6 @@ DerivedData/
 # Xcode user state
 xcuserdata/
 *.xcuserstate
+
+# tun2socks runtime
+mac/tun/singbox.log
