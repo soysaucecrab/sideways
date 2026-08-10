@@ -23,6 +23,11 @@ SC
 }
 trap cleanup EXIT INT TERM
 
+# tun 모드에선 시스템 SOCKS 프록시가 방해되므로 꺼둔다 (메뉴바 앱이 켰을 수 있음)
+for svc in $(networksetup -listallnetworkservices 2>/dev/null | tail -n +2 | grep -v "^\\*"); do
+  networksetup -setsocksfirewallproxystate "$svc" off 2>/dev/null
+done
+
 echo "▶ TUN 터널 시작 중..."
 /opt/homebrew/bin/sing-box run -c "$DIR/config.json" &
 SB=$!
