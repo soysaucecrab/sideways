@@ -45,17 +45,6 @@ struct ProxyValueProvider: ControlValueProvider {
     }
 }
 
-struct ToggleProxyIntent: SetValueIntent {
-    static let title: LocalizedStringResource = "Data Sharing 프록시 전환"
-    // The listener must run in the app process in the foreground, so opening
-    // the app is required for both start and stop.
-    static let openAppWhenRun: Bool = true
-
-    @Parameter(title: "켜기")
-    var value: Bool
-
-    func perform() async throws -> some IntentResult {
-        SharedState.setDesired(value)
-        return .result()
-    }
-}
+// ToggleProxyIntent lives in Shared/ProxyControlIntent.swift so it compiles
+// into both the app and this extension — required for the control to open the
+// app when tapped.
