@@ -31,7 +31,9 @@ enum SharedState {
     }
 
     static var requireCellular: Bool {
-        get { defaults.object(forKey: cellularKey) as? Bool ?? true }
+        // Default off: Wi-Fi-permitted is the friendlier default; users who
+        // want strict cellular pinning enable it explicitly.
+        get { defaults.object(forKey: cellularKey) as? Bool ?? false }
         set { defaults.set(newValue, forKey: cellularKey) }
     }
 

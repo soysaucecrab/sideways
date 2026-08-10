@@ -14,6 +14,8 @@ final class ProxyStats: ObservableObject {
     @Published private(set) var activeConnections = 0
     @Published private(set) var bytesIn: Int = 0    // internet → Mac
     @Published private(set) var bytesOut: Int = 0    // Mac → internet
+    @Published private(set) var rateIn: Int = 0     // bytes/sec, internet → Mac
+    @Published private(set) var rateOut: Int = 0    // bytes/sec, Mac → internet
     @Published private(set) var lastError: String?
 
     private func onMain(_ work: @escaping () -> Void) {
@@ -62,11 +64,22 @@ final class ProxyStats: ObservableObject {
         onMain {
             self.bytesIn = 0
             self.bytesOut = 0
+            self.rateIn = 0
+            self.rateOut = 0
+        }
+    }
+
+    func setRates(in rIn: Int, out rOut: Int) {
+        onMain {
+            self.rateIn = max(0, rIn)
+            self.rateOut = max(0, rOut)
         }
     }
 
     var bytesInText: String { ByteFormat.string(bytesIn) }
     var bytesOutText: String { ByteFormat.string(bytesOut) }
+    var rateInText: String { ByteFormat.rate(rateIn) }
+    var rateOutText: String { ByteFormat.rate(rateOut) }
 }
 
 enum ByteFormat {
@@ -79,5 +92,9 @@ enum ByteFormat {
             idx += 1
         }
         return idx == 0 ? "\(bytes) B" : String(format: "%.1f %@", value, units[idx])
+    }
+
+    static func rate(_ bytesPerSec: Int) -> String {
+        string(bytesPerSec) + "/s"
     }
 }

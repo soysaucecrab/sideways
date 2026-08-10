@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject private var stats: ProxyStats
+    @EnvironmentObject private var usage: UsageStore
     @ObservedObject var controller: ProxyController
 
     @State private var portText = "8888"
@@ -28,6 +29,12 @@ struct ContentView: View {
                 }
 
                 Section {
+                    LabeledContent("다운로드 속도") {
+                        Text(stats.rateInText).monospacedDigit()
+                    }
+                    LabeledContent("업로드 속도") {
+                        Text(stats.rateOutText).monospacedDigit()
+                    }
                     LabeledContent("활성 연결") {
                         Text("\(stats.activeConnections)").monospacedDigit()
                     }
@@ -39,6 +46,14 @@ struct ContentView: View {
                     }
                 } header: {
                     Text("통계")
+                }
+
+                Section {
+                    NavigationLink {
+                        UsageView()
+                    } label: {
+                        Label("누적 사용량", systemImage: "chart.bar.fill")
+                    }
                 }
 
                 Section {
@@ -55,8 +70,6 @@ struct ContentView: View {
                         .disabled(stats.isRunning)
                 } header: {
                     Text("설정")
-                } footer: {
-                    Text("셀룰러 강제를 끄면 Wi‑Fi로도 나갈 수 있어 디버깅에 유용합니다. 실사용 시 켜 두세요.")
                 }
 
                 signingSection
