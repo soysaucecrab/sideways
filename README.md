@@ -3,7 +3,7 @@
 iPhone의 셀룰러 데이터를 USB로 연결된 Mac에 SOCKS5 프록시로 공유합니다.
 캐리어 테더링(개인용 핫스팟) 없이, 트래픽은 iPhone의 일반 트래픽으로 나갑니다.
 
-자세한 설계는 [`spec.md`](spec.md), 작업 규칙은 [`CLAUDE.md`](CLAUDE.md) 참고.
+자세한 설계는 [`spec.md`](spec.md)참고.
 
 ## 구성
 
