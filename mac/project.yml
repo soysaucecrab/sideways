@@ -28,6 +28,8 @@ targets:
         buildPhase: resources
       - path: tun/tun-down.sh
         buildPhase: resources
+      - path: tun/install-helper.sh
+        buildPhase: resources
     info:
       path: Info.plist
       properties:

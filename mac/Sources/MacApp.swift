@@ -7,6 +7,7 @@ struct DataSharingMacApp: App {
     var body: some Scene {
         MenuBarExtra("Data Sharing", systemImage: menuIcon) {
             MenuContentView(tunnel: tunnel)
+                .onAppear { tunnel.recoverStaleStateOnLaunch() }
         }
         .menuBarExtraStyle(.window)
     }

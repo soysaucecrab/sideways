@@ -75,6 +75,15 @@ final class TunnelManager: ObservableObject {
             return
         }
 
+        // One-time (or on-update) setup: single auth prompt grants passwordless
+        // sudo for the TUN scripts. After this, start/stop need no auth.
+        if !TunHelper.isInstalled {
+            guard TunHelper.install() else {
+                setStatus(.failed("최초 설정(권한 부여)에 실패했습니다. 관리자 인증을 취소했거나 실패했습니다."))
+                return
+            }
+        }
+
         let udid = detectDevice()
 
         // Kill any stray iproxy holding our port so the new one can bind.
@@ -104,7 +113,8 @@ final class TunnelManager: ObservableObject {
                 self.iproxyProcess = nil
                 if self.isRunningFlag {
                     self.isRunningFlag = false
-                    _ = TunHelper.runPrivileged(script: "tun-down.sh")  // undo routing/DNS
+                    // The watchdog also cleans up, but do it here too (belt & braces).
+                    _ = TunHelper.run("tun-down.sh")
                     self.setStatus(.failed("iproxy가 종료되었습니다 (코드 \(proc.terminationStatus)). iPhone 연결/잠금 해제를 확인하세요."))
                 }
             }
@@ -118,11 +128,11 @@ final class TunnelManager: ObservableObject {
         }
         iproxyProcess = process
 
-        // 2) Bring up the TUN + DNS as root (one auth prompt). Give iproxy a
-        // moment to bind first so tun-up's iproxy check passes.
-        Thread.sleep(forTimeInterval: 1.0)
-        let result = TunHelper.runPrivileged(script: "tun-up.sh")
-        let ok = result.ok && (result.output.contains("ok") || result.output.contains("already_running"))
+        // 2) Bring up the TUN + DNS via passwordless sudo (no prompt). Give
+        // iproxy a moment to bind first so tun-up's iproxy check passes.
+        Thread.sleep(forTimeInterval: 1.2)
+        let result = TunHelper.run("tun-up.sh")
+        let ok = result.ok && result.output.contains("ok")
         if ok {
             isRunningFlag = true
             setStatus(.running)
@@ -139,13 +149,22 @@ final class TunnelManager: ObservableObject {
 
     private func stopLocked() {
         isRunningFlag = false
-        _ = TunHelper.runPrivileged(script: "tun-down.sh")  // remove routing/DNS
+        _ = TunHelper.run("tun-down.sh")  // remove routing/DNS
         if let process = iproxyProcess {
             process.terminationHandler = nil
             process.terminate()
             iproxyProcess = nil
         }
         setStatus(.idle)
+    }
+
+    /// Best-effort cleanup of a stranded tunnel from a previous crash/force-quit
+    /// (in case the watchdog didn't run). Safe no-op if nothing is stale.
+    func recoverStaleStateOnLaunch() {
+        workQueue.async {
+            guard TunHelper.isInstalled else { return }
+            _ = TunHelper.run("tun-down.sh")
+        }
     }
 
     // MARK: - Internal state
