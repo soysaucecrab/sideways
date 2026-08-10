@@ -4,9 +4,6 @@ struct MenuContentView: View {
     @ObservedObject var tunnel: TunnelManager
     @AppStorage("macPort") private var macPortStore: Int = 8888
     @AppStorage("iphonePort") private var iphonePortStore: Int = 8888
-    @AppStorage("service") private var serviceStore: String = "Wi-Fi"
-
-    @State private var services: [String] = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -25,14 +22,6 @@ struct MenuContentView: View {
 
             Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 6) {
                 GridRow {
-                    Text("네트워크 서비스").foregroundStyle(.secondary)
-                    Picker("", selection: $serviceStore) {
-                        ForEach(services, id: \.self) { Text($0).tag($0) }
-                    }
-                    .labelsHidden()
-                    .disabled(tunnel.isRunning)
-                }
-                GridRow {
                     Text("Mac 포트").foregroundStyle(.secondary)
                     TextField("8888", value: $macPortStore, format: .number.grouping(.never))
                         .frame(width: 80)
@@ -46,6 +35,12 @@ struct MenuContentView: View {
                 }
             }
             .font(.callout)
+
+            Label("모든 네트워크 서비스에 프록시를 자동 적용합니다 (활성 서비스가 자동 반영).",
+                  systemImage: "info.circle")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
 
             if case .failed(let message) = tunnel.status {
                 Text(message)
@@ -104,10 +99,6 @@ struct MenuContentView: View {
     }
 
     private func refresh() {
-        services = ProxyConfigurator.networkServices()
-        if !services.contains(serviceStore), let first = services.first {
-            serviceStore = first
-        }
         tunnel.refreshDevice()
     }
 
@@ -117,7 +108,6 @@ struct MenuContentView: View {
         } else {
             tunnel.macPort = UInt16(clamping: macPortStore)
             tunnel.iphonePort = UInt16(clamping: iphonePortStore)
-            tunnel.service = serviceStore
             tunnel.start()
         }
     }

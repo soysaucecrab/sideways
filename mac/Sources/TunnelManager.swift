@@ -19,9 +19,10 @@ final class TunnelManager: ObservableObject {
     // User-configurable (persisted by the view via @AppStorage-backed values).
     @Published var macPort: UInt16 = 8888
     @Published var iphonePort: UInt16 = 8888
-    @Published var service: String = "Wi-Fi"
 
     private var iproxyProcess: Process?
+    /// Services we enabled the SOCKS proxy on, so stop/crash undoes exactly those.
+    private var proxiedServices: [String] = []
     private let workQueue = DispatchQueue(label: "tunnel.manager")
 
     // Homebrew tools live in different prefixes on Intel vs Apple Silicon.
@@ -123,7 +124,8 @@ final class TunnelManager: ObservableObject {
                 // undo the system-proxy change so the Mac isn't left offline.
                 if self.isRunningFlag {
                     self.isRunningFlag = false
-                    _ = ProxyConfigurator.disableSOCKS(service: self.service)
+                    ProxyConfigurator.disableSOCKSOnAll(services: self.proxiedServices)
+                    self.proxiedServices = []
                     self.setStatus(.failed("iproxy가 종료되었습니다 (코드 \(proc.terminationStatus)). iPhone 연결/잠금 해제를 확인하세요."))
                 }
             }
@@ -137,17 +139,23 @@ final class TunnelManager: ObservableObject {
         }
         iproxyProcess = process
 
-        // 2) Point the system SOCKS proxy at the forwarded local port.
-        switch ProxyConfigurator.setSOCKS(service: service, host: "127.0.0.1", port: macPort) {
-        case .success:
-            isRunningFlag = true
-            setStatus(.running)
-        case .failure(let message):
-            // Roll back the tunnel so we don't leave iproxy running with no proxy.
+        // 2) Point the system SOCKS proxy at the forwarded local port, on ALL
+        // services. macOS applies only the active primary service's proxy, and
+        // that primary shifts as Wi-Fi/USB come and go — so cover them all and
+        // whichever is active is always right (fixes the "sometimes works" bug).
+        let (applied, failed) = ProxyConfigurator.setSOCKSOnAll(host: "127.0.0.1", port: macPort)
+        proxiedServices = applied
+
+        if applied.isEmpty {
+            // Couldn't set the proxy anywhere — roll back the tunnel.
             process.terminationHandler = nil
             process.terminate()
             iproxyProcess = nil
-            setStatus(.failed("프록시 설정 실패: \(message.message)"))
+            let detail = failed.first.map { "\($0.0): \($0.1)" } ?? "설정 가능한 네트워크 서비스가 없습니다."
+            setStatus(.failed("프록시 설정 실패: \(detail)"))
+        } else {
+            isRunningFlag = true
+            setStatus(.running)
         }
     }
 
@@ -159,7 +167,10 @@ final class TunnelManager: ObservableObject {
         isRunningFlag = false
 
         // Undo the system-proxy change first so the Mac regains normal networking.
-        let disable = ProxyConfigurator.disableSOCKS(service: service)
+        // Clear both the services we set and anything else currently carrying it.
+        ProxyConfigurator.disableSOCKSOnAll(services: proxiedServices)
+        ProxyConfigurator.disableSOCKSOnAll()
+        proxiedServices = []
 
         if let process = iproxyProcess {
             process.terminationHandler = nil
@@ -167,12 +178,7 @@ final class TunnelManager: ObservableObject {
             iproxyProcess = nil
         }
 
-        switch disable {
-        case .success:
-            setStatus(.idle)
-        case .failure(let message):
-            setStatus(.failed("프록시 해제 실패: \(message.message)"))
-        }
+        setStatus(.idle)
     }
 
     // MARK: - Internal state
@@ -188,7 +194,7 @@ final class TunnelManager: ObservableObject {
     deinit {
         // Best-effort cleanup if the app quits while running.
         if isRunningFlag {
-            _ = ProxyConfigurator.disableSOCKS(service: service)
+            ProxyConfigurator.disableSOCKSOnAll(services: proxiedServices)
         }
         iproxyProcess?.terminate()
     }

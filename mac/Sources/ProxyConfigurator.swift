@@ -66,6 +66,30 @@ enum ProxyConfigurator {
         return .success(())
     }
 
+    /// Enable the SOCKS proxy on *every* configurable service. macOS applies
+    /// only the currently-active primary service's proxy to apps, and that
+    /// primary changes as Wi-Fi/USB come and go — so we set them all, and
+    /// whichever is active is always covered. Returns the services we touched
+    /// (to undo exactly those later) and any per-service failures.
+    static func setSOCKSOnAll(host: String, port: UInt16) -> (applied: [String], failed: [(String, String)]) {
+        var applied: [String] = []
+        var failed: [(String, String)] = []
+        for service in networkServices() {
+            switch setSOCKS(service: service, host: host, port: port) {
+            case .success: applied.append(service)
+            case .failure(let e): failed.append((service, e.message))
+            }
+        }
+        return (applied, failed)
+    }
+
+    /// Disable the SOCKS proxy on the given services (or all, if nil).
+    static func disableSOCKSOnAll(services: [String]? = nil) {
+        for service in services ?? networkServices() {
+            _ = disableSOCKS(service: service)
+        }
+    }
+
     private static func errorText(_ r: ShellResult) -> ProxyError {
         let combined = (r.stderr + r.stdout).trimmingCharacters(in: .whitespacesAndNewlines)
         return ProxyError(message: combined.isEmpty ? "networksetup exited \(r.exitCode)" : combined)
