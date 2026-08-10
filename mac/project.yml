@@ -20,6 +20,14 @@ targets:
     sources:
       - Sources
       - Assets.xcassets
+      # TUN scripts + config, copied into the app bundle Resources and run as
+      # root via one auth prompt (see TunHelper).
+      - path: tun/config.json
+        buildPhase: resources
+      - path: tun/tun-up.sh
+        buildPhase: resources
+      - path: tun/tun-down.sh
+        buildPhase: resources
     info:
       path: Info.plist
       properties:

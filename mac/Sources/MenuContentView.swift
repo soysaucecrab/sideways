@@ -36,7 +36,7 @@ struct MenuContentView: View {
             }
             .font(.callout)
 
-            Label("모든 네트워크 서비스에 프록시를 자동 적용합니다 (활성 서비스가 자동 반영).",
+            Label("시작하면 Wi‑Fi 없이도 모든 앱이 iPhone 인터넷으로 나갑니다. 시작·중지 시 관리자 인증(암호/Touch ID)이 한 번 필요합니다.",
                   systemImage: "info.circle")
                 .font(.caption)
                 .foregroundStyle(.secondary)
