@@ -14,16 +14,31 @@ final class ProxyController: ObservableObject {
     init(stats: ProxyStats) {
         self.stats = stats
         self.server = SOCKS5Server(stats: stats)
+        self.requireCellular = SharedState.requireCellular
     }
 
     func start(port: UInt16) {
         server.requireCellular = requireCellular
         server.start(port: port)
         UIApplication.shared.isIdleTimerDisabled = true
+        SharedState.port = port
+        SharedState.requireCellular = requireCellular
     }
 
     func stop() {
         server.stop()
         UIApplication.shared.isIdleTimerDisabled = false
+    }
+
+    /// Applies a pending start/stop request written by the Control Center
+    /// toggle. Called when the scene becomes active — the toggle opens the app,
+    /// so activation is the earliest point the listener can safely run.
+    func applyDesiredFromControl() {
+        guard let desired = SharedState.takeDesired() else { return }
+        if desired, !stats.isRunning {
+            start(port: SharedState.port)
+        } else if !desired, stats.isRunning {
+            stop()
+        }
     }
 }

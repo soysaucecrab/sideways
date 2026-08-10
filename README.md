@@ -15,6 +15,8 @@ Mac 앱 → 127.0.0.1:8888 (Mac) --USB/usbmuxd--> iPhone:8888 (SOCKS5) → 셀�
   - `127.0.0.1:8888`에서 SOCKS5 `CONNECT` 수신, 원격 DNS(도메인 주소 타입) 지원
   - 아웃바운드는 셀룰러 인터페이스로 고정(`requiredInterfaceType = .cellular`)
   - 포그라운드 UI: 시작/중지, 활성 연결 수, 송·수신 바이트, 리슨 포트
+  - 제어 센터 토글(iOS 18+): 제어 센터 편집 → **Data Sharing** 컨트롤 추가.
+    프록시는 포그라운드 전용이므로 토글을 켜면 앱이 열리면서 시작됩니다.
 - **`mac/`** — macOS 메뉴바 헬퍼 앱 (SwiftUI `MenuBarExtra`)
   - `iproxy`(libimobiledevice)를 실행해 Mac 로컬 포트 ↔ iPhone 포트 USB 브리지
   - 시스템 SOCKS 프록시를 `networksetup`으로 켜고/끔
@@ -98,6 +100,9 @@ echo "생성됨: ios/build/DataSharing.ipa"
 2. iPhone의 **AltStore → My Apps → 좌상단 `+`** → `DataSharing.ipa` 선택.
 3. Apple ID 재확인 후 설치 완료.
 
+> 앱에 제어 센터 위젯 확장이 포함되어 있어 App ID를 2개(앱+확장) 사용합니다.
+> 설치 중 확장(extension)을 유지할지 물으면 **Keep**을 선택하세요(제어 센터 토글에 필요).
+
 ### 4. 자동 갱신 유지
 
 - iPhone AltStore의 **My Apps**에 남은 만료일이 표시됩니다.
@@ -108,7 +113,8 @@ echo "생성됨: ios/build/DataSharing.ipa"
 ## 현재 범위 (M1~M3)
 
 구현됨: SOCKS5 `CONNECT`(IPv4/IPv6/도메인), 원격 DNS, 양방향 릴레이, 동시 연결,
-셀룰러 핀닝, iPhone 통계 UI, macOS `iproxy`+프록시 토글, UDID 자동 감지.
+셀룰러 핀닝, iPhone 통계 UI, macOS `iproxy`+프록시 토글, UDID 자동 감지,
+제어 센터 토글(iOS 18+, 켜기는 앱 열림 방식).
 
 미구현(spec §7, M4): UDP `associate`, iOS 백그라운드 지속 실행, 자동 재연결.
 

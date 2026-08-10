@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import WidgetKit
 
 /// Observable state for the proxy UI (spec §5.1: active-connection count,
 /// bytes in/out, listen port, running state).
@@ -24,6 +25,7 @@ final class ProxyStats: ObservableObject {
             self.isRunning = true
             self.listenPort = port
             self.lastError = nil
+            Self.syncControl(running: true)
         }
     }
 
@@ -31,6 +33,16 @@ final class ProxyStats: ObservableObject {
         onMain {
             self.isRunning = false
             if let error { self.lastError = error }
+            Self.syncControl(running: false)
+        }
+    }
+
+    /// Mirrors the running state into the app group and refreshes the
+    /// Control Center toggle (iOS 18+) so it never shows a stale state.
+    private static func syncControl(running: Bool) {
+        SharedState.isRunning = running
+        if #available(iOS 18.0, *) {
+            ControlCenter.shared.reloadControls(ofKind: SharedState.controlKind)
         }
     }
 
