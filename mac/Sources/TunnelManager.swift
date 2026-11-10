@@ -90,8 +90,11 @@ final class TunnelManager: ObservableObject {
         _ = Shell.run("/usr/bin/pkill", ["-f", "iproxy \(macPort):"])
         Thread.sleep(forTimeInterval: 0.3)
 
-        // 1) Launch iproxy (USB tunnel). Runs as the user.
-        var args = ["\(macPort):\(iphonePort)"]
+        // 1) Launch iproxy (USB tunnel). Runs as the user. Without `-s`, iproxy
+        // listens on every interface, so anyone on the same Wi-Fi could use the
+        // phone's data through this Mac. The port mapping stays first so the
+        // `pgrep -f "iproxy 8888"` checks in the tun scripts still match.
+        var args = ["\(macPort):\(iphonePort)", "-s", "127.0.0.1"]
         if let udid { args += ["-u", udid] }
 
         let process = Process()
