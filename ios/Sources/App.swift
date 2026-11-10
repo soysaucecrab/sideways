@@ -21,13 +21,11 @@ struct DataSharingApp: App {
                 .environmentObject(stats)
                 .environmentObject(usage)
                 .onChange(of: scenePhase) { _, phase in
-                    switch phase {
-                    case .active:
+                    // The tunnel keeps running while the app is closed, so
+                    // re-sync with it on every return to the foreground.
+                    if phase == .active {
+                        controller.refresh()
                         controller.applyDesiredFromControl()
-                    case .background:
-                        usage.flush()   // don't lose counts if suspended
-                    default:
-                        break
                     }
                 }
         }

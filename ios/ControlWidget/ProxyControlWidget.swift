@@ -9,9 +9,10 @@ struct DataSharingControlBundle: WidgetBundle {
     }
 }
 
-/// Control Center toggle for the SOCKS5 proxy. The proxy only runs while the
-/// app is foreground, so the intent opens the app; the app then applies the
-/// desired state on activation (see ProxyController.applyDesiredFromControl).
+/// Control Center toggle for the SOCKS5 proxy. Only the app may manage the
+/// VPN configuration that hosts the proxy, so the intent opens the app; the
+/// app then applies the desired state on activation (see
+/// ProxyController.applyDesiredFromControl).
 struct ProxyControlWidget: ControlWidget {
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(

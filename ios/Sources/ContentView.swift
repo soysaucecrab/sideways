@@ -7,7 +7,6 @@ struct ContentView: View {
 
     @State private var portText = "8888"
     @State private var signing: SigningInfo? = SigningInfo.current()
-    @Environment(\.openURL) private var openURL
 
     var body: some View {
         NavigationStack {
@@ -26,6 +25,8 @@ struct ContentView: View {
                     }
                 } header: {
                     Text("상태")
+                } footer: {
+                    Text("켜두면 앱을 나가거나 화면을 꺼도 계속 동작합니다. 실행 중에는 상단에 VPN 표시가 나타납니다.")
                 }
 
                 Section {
@@ -110,7 +111,7 @@ struct ContentView: View {
         }
     }
 
-    // MARK: - Signing / AltStore refresh
+    // MARK: - Signing
 
     @ViewBuilder
     private var signingSection: some View {
@@ -124,20 +125,10 @@ struct ContentView: View {
                         .foregroundStyle(expiryColor(signing))
                         .monospacedDigit()
                 }
-                Button {
-                    AltStoreLink.open { opened in
-                        if !opened {
-                            // Fall through to whatever handler the system has.
-                            openURL(AltStoreLink.candidates[0])
-                        }
-                    }
-                } label: {
-                    Label("AltStore에서 갱신", systemImage: "arrow.clockwise")
-                }
             } header: {
                 Text("서명")
             } footer: {
-                Text("무료 Apple ID 서명은 7일 후 만료됩니다. AltStore(AltServer)가 만료 전 자동 갱신하며, 위 버튼으로 즉시 갱신할 수 있습니다.")
+                Text("개발자 서명은 만료일까지 유효합니다. 만료 전에 Xcode로 다시 빌드해 설치하세요.")
             }
         }
     }

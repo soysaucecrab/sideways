@@ -5,9 +5,10 @@ import WidgetKit
 /// Observable state for the proxy UI (spec §5.1: active-connection count,
 /// bytes in/out, listen port, running state).
 ///
-/// The server calls these mutators from its own serial queue; each one hops to
-/// the main thread itself, so callers never have to. `@Published` mutations
-/// therefore always land on main, as SwiftUI requires.
+/// The proxy runs in the packet tunnel extension, so this is a mirror: the
+/// controller sets the running state from the VPN status and applies
+/// snapshots polled from the extension. Each mutator hops to the main thread
+/// itself, so `@Published` mutations always land on main, as SwiftUI requires.
 final class ProxyStats: ObservableObject {
     @Published private(set) var isRunning = false
     @Published private(set) var listenPort: UInt16 = 8888
@@ -48,16 +49,24 @@ final class ProxyStats: ObservableObject {
         }
     }
 
-    func setActiveConnections(_ count: Int) {
-        onMain { self.activeConnections = max(0, count) }
+    /// Applies counters polled from the tunnel extension.
+    func apply(_ snapshot: TunnelSnapshot) {
+        onMain {
+            self.activeConnections = snapshot.activeConnections
+            self.bytesIn = snapshot.bytesIn
+            self.bytesOut = snapshot.bytesOut
+            self.rateIn = snapshot.rateIn
+            self.rateOut = snapshot.rateOut
+            if let error = snapshot.lastError { self.lastError = error }
+        }
     }
 
-    func addBytesIn(_ n: Int) {
-        onMain { self.bytesIn += n }
-    }
-
-    func addBytesOut(_ n: Int) {
-        onMain { self.bytesOut += n }
+    /// Zeroes the live rates when the tunnel stops; session totals stay visible.
+    func clearRates() {
+        onMain {
+            self.rateIn = 0
+            self.rateOut = 0
+        }
     }
 
     func resetCounters() {
@@ -66,13 +75,6 @@ final class ProxyStats: ObservableObject {
             self.bytesOut = 0
             self.rateIn = 0
             self.rateOut = 0
-        }
-    }
-
-    func setRates(in rIn: Int, out rOut: Int) {
-        onMain {
-            self.rateIn = max(0, rIn)
-            self.rateOut = max(0, rOut)
         }
     }
 

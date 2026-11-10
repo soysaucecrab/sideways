@@ -10,7 +10,7 @@ settings:
     SWIFT_VERSION: "5.0"
     MARKETING_VERSION: "1.0"
     CURRENT_PROJECT_VERSION: "1"
-    DEVELOPMENT_TEAM: ""
+    DEVELOPMENT_TEAM: QUVRH6RH45
     CODE_SIGN_STYLE: Automatic
     TARGETED_DEVICE_FAMILY: "1"
 
@@ -24,14 +24,19 @@ targets:
       - Assets.xcassets
     dependencies:
       - target: DataSharingControl
+      - target: DataSharingTunnel
+    # Declare capabilities as enabled so automatic signing registers them and
+    # adds them to the provisioning profile.
+    attributes:
+      SystemCapabilities:
+        com.apple.ApplicationGroups.iOS:
+          enabled: 1
+        com.apple.NetworkExtensions.iOS:
+          enabled: 1
     info:
       path: Info.plist
       properties:
         CFBundleDisplayName: Data Sharing
-        # Required so canOpenURL can detect AltStore / SideStore for refresh.
-        LSApplicationQueriesSchemes:
-          - altstore
-          - sidestore
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
@@ -42,6 +47,9 @@ targets:
       properties:
         com.apple.security.application-groups:
           - group.com.zinu.datasharing
+        # Required to create and start the VPN configuration for the tunnel.
+        com.apple.developer.networking.networkextension:
+          - packet-tunnel-provider
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.zinu.datasharing.ios
@@ -57,6 +65,10 @@ targets:
     sources:
       - ControlWidget
       - Shared
+    attributes:
+      SystemCapabilities:
+        com.apple.ApplicationGroups.iOS:
+          enabled: 1
     info:
       path: ControlWidget/Info.plist
       properties:
@@ -71,5 +83,43 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.zinu.datasharing.ios.control
+        GENERATE_INFOPLIST_FILE: false
+        SKIP_INSTALL: true
+
+  # Packet tunnel extension that hosts the SOCKS5 server, so the proxy keeps
+  # running with the app closed and the screen locked (see
+  # PacketTunnelProvider). Needs a paid developer account: free provisioning
+  # cannot grant the Network Extension entitlement.
+  DataSharingTunnel:
+    type: app-extension
+    platform: iOS
+    sources:
+      - Tunnel
+      - path: Shared/SharedState.swift
+      - path: Shared/TunnelSnapshot.swift
+      - path: Sources/UsageStore.swift
+    attributes:
+      SystemCapabilities:
+        com.apple.ApplicationGroups.iOS:
+          enabled: 1
+        com.apple.NetworkExtensions.iOS:
+          enabled: 1
+    info:
+      path: Tunnel/Info.plist
+      properties:
+        CFBundleDisplayName: Data Sharing Tunnel
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.networkextension.packet-tunnel
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).PacketTunnelProvider
+    entitlements:
+      path: DataSharingTunnel.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.zinu.datasharing
+        com.apple.developer.networking.networkextension:
+          - packet-tunnel-provider
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.zinu.datasharing.ios.tunnel
         GENERATE_INFOPLIST_FILE: false
         SKIP_INSTALL: true

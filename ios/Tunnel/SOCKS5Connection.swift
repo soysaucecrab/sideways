@@ -29,7 +29,7 @@ final class SOCKS5Connection {
     private var outbound: NWConnection?
     private let queue: DispatchQueue
     private let requireCellular: Bool
-    private let stats: ProxyStats
+    private let stats: TunnelStats
     private let onClose: (Int) -> Void
     private var closed = false
 
@@ -37,7 +37,7 @@ final class SOCKS5Connection {
          inbound: NWConnection,
          queue: DispatchQueue,
          requireCellular: Bool,
-         stats: ProxyStats,
+         stats: TunnelStats,
          onClose: @escaping (Int) -> Void) {
         self.id = id
         self.inbound = inbound

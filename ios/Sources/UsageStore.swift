@@ -5,9 +5,11 @@ import Combine
 /// per-month, and all-time byte totals for both directions. Stored in the
 /// app-group container so the numbers survive relaunches and start/stop.
 ///
-/// The proxy feeds deltas via `add(inBytes:outBytes:)` (once per sampling
-/// tick); the store keeps a bounded per-day ledger and derives month/total
-/// from it plus an all-time accumulator.
+/// The packet tunnel extension is the only writer: it feeds deltas via
+/// `add(inBytes:outBytes:)` (once per sampling tick) and flushes. The app only
+/// reads, calling `reload()` to pick up the extension's writes — two writers
+/// would overwrite each other's in-memory ledgers. The store keeps a bounded
+/// per-day ledger and derives month/total from it plus an all-time accumulator.
 final class UsageStore: ObservableObject {
     struct DayUsage: Identifiable {
         let day: String        // "yyyy-MM-dd"
@@ -74,6 +76,11 @@ final class UsageStore: ObservableObject {
         defaults.set(allTimeIn, forKey: totalInKey)
         defaults.set(allTimeOut, forKey: totalOutKey)
         dirty = false
+    }
+
+    /// Re-reads the ledger the tunnel extension persisted.
+    func reload() {
+        load()
     }
 
     // MARK: - Derivation

@@ -3,15 +3,26 @@ import Network
 
 /// Minimal SOCKS5 proxy server (M1 scope: CONNECT + remote DNS, TCP only).
 ///
-/// Listens on a local TCP port. `iproxy` on the Mac forwards a Mac-local port
-/// over USB to this port, and macOS is configured to use it as its SOCKS proxy.
-/// Each accepted connection is handled by a `SOCKS5Connection`, which performs
-/// the SOCKS handshake and then relays bytes to an outbound connection opened
-/// over the cellular interface.
+/// Hosted by `PacketTunnelProvider`, so it keeps running while the app is in
+/// the background or the screen is off. Listens on a local TCP port; `iproxy`
+/// on the Mac forwards a Mac-local port over USB to it. Each accepted
+/// connection is handled by a `SOCKS5Connection`, which performs the SOCKS
+/// handshake and then relays bytes to an outbound connection opened over the
+/// cellular interface.
 final class SOCKS5Server {
 
-    /// Aggregate, observable state for the UI.
-    let stats: ProxyStats
+    enum ListenerEvent {
+        case ready
+        case failed(Error)
+    }
+
+    /// Thread-safe counters, read by the tunnel provider for app snapshots.
+    let stats: TunnelStats
+
+    /// Listener readiness/failure. The tunnel provider waits for `.ready`
+    /// before reporting the tunnel as connected, so the VPN never shows "on"
+    /// while the port is not actually bound. Called on `queue`.
+    var stateHandler: ((ListenerEvent) -> Void)?
 
     private let queue = DispatchQueue(label: "socks5.server", qos: .userInitiated)
     private var listener: NWListener?
@@ -24,7 +35,7 @@ final class SOCKS5Server {
     /// Disable for on-device debugging without a working USB tunnel.
     var requireCellular: Bool = true
 
-    init(stats: ProxyStats) {
+    init(stats: TunnelStats) {
         self.stats = stats
     }
 
@@ -50,9 +61,11 @@ final class SOCKS5Server {
         // The bind port is carried by `requiredLocalEndpoint` above; passing it
         // again via `on:` is contradictory and makes the initializer fail.
         guard let listener = try? NWListener(using: params) else {
-            DispatchQueue.main.async { [weak self] in
-                self?.stats.setStopped(error: "listener_create_failed")
-            }
+            stats.setStopped(error: "listener_create_failed")
+            stateHandler?(.failed(NSError(
+                domain: "DataSharing", code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "listener_create_failed"]
+            )))
             return
         }
 
@@ -60,12 +73,14 @@ final class SOCKS5Server {
             guard let self else { return }
             switch state {
             case .ready:
-                DispatchQueue.main.async { self.stats.setRunning(port: port) }
+                self.stats.setRunning(port: port)
+                self.stateHandler?(.ready)
             case .failed(let error):
-                DispatchQueue.main.async { self.stats.setStopped(error: "\(error)") }
+                self.stats.setStopped(error: "\(error)")
+                self.stateHandler?(.failed(error))
                 self.stop()
             case .cancelled:
-                DispatchQueue.main.async { self.stats.setStopped(error: nil) }
+                self.stats.setStopped(error: nil)
             default:
                 break
             }
@@ -91,15 +106,14 @@ final class SOCKS5Server {
             stats: stats
         ) { [weak self] finishedID in
             self?.queue.async {
-                self?.connections[finishedID] = nil
-                DispatchQueue.main.async {
-                    self?.stats.setActiveConnections(self?.connections.count ?? 0)
-                }
+                guard let self else { return }
+                self.connections[finishedID] = nil
+                self.stats.setActiveConnections(self.connections.count)
             }
         }
 
         connections[id] = conn
-        DispatchQueue.main.async { self.stats.setActiveConnections(self.connections.count) }
+        stats.setActiveConnections(connections.count)
         conn.start()
     }
 
@@ -113,10 +127,8 @@ final class SOCKS5Server {
                 conn.cancel()
             }
             self.connections.removeAll()
-            DispatchQueue.main.async {
-                self.stats.setActiveConnections(0)
-                self.stats.setStopped(error: nil)
-            }
+            self.stats.setActiveConnections(0)
+            self.stats.setStopped(error: nil)
         }
     }
 }

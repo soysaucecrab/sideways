@@ -1,12 +1,14 @@
 import Foundation
 
-/// State shared between the app and the Control Center widget extension via
-/// the app-group container. The control toggle writes a "desired" state; the
-/// app consumes it on activation (the proxy is foreground-only, so the toggle
-/// opens the app rather than starting the listener out-of-process).
+/// State shared between the app, the packet tunnel extension that hosts the
+/// proxy, and the Control Center widget extension via the app-group container.
+/// The control toggle writes a "desired" state; the app consumes it on
+/// activation and starts or stops the tunnel (only the app can manage the VPN
+/// configuration, so the toggle opens the app).
 enum SharedState {
     static let appGroupID = "group.com.zinu.datasharing"
     static let controlKind = "com.zinu.datasharing.ios.control.proxy"
+    static let tunnelBundleID = "com.zinu.datasharing.ios.tunnel"
 
     private static let runningKey = "control.isRunning"
     private static let desiredKey = "control.desired"
